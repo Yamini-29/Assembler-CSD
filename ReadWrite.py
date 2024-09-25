@@ -1,5 +1,5 @@
-import subprocess
 import os
+from opcode_table import opcode_table
 
 def assemble_asm_to_object(asm_file, obj_file):
     try:
@@ -8,19 +8,26 @@ def assemble_asm_to_object(asm_file, obj_file):
             print(f"Error: {asm_file} not found.")
             return
 
-        # Command to assemble the ASM file into an object file using NASM
-        # The '-f elf32' flag is used for 32-bit assembly
-        command = ['nasm', '-f', 'elf32', asm_file, '-o', obj_file]
-        
-        # Run the command and capture output
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #open asm file for reading
+        with open(asm_file, 'r') as asm:
+            # Open the object file for writing in binary mode
+            with open(obj_file, 'w') as obj:
+                for line in asm:
+                    line=line.split('//')[0].strip()
+                    if line!='':
+                        line=line.strip()
+                        if len(line.split())>0:
+                            parts=line.split()
+                            instruction=parts[0].upper()
 
-        # Check for errors during the assembly process
-        if result.returncode == 0:
-            print(f"Successfully assembled {asm_file} into {obj_file}")
-        else:
-            print(f"Error assembling file: {result.stderr.decode()}")
-
+                            #Translate the instruction to binary using lookup table
+                            if instruction in opcode_table:
+                                binary_code=opcode_table[instruction]
+                                # binary_data=int(binary_code).to_bytes(4, byteorder='big')
+                                obj.write(binary_code+'\n')
+                            else:
+                                print(f"Warning: Unknown instruction {instruction}")
+        print(f"Successfully assembled {asm_file} into {obj_file}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
