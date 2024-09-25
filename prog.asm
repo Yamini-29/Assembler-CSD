@@ -1,16 +1,10 @@
-section .data
-    hello db 'Hello, World!', 0
+    MOV R0, #13       ; Load immediate value 13 into R0 (message length)
+    //loading
+    LDR R1, =hello    ; Load the address of the message into R1
+    MOV R2, R0        ; Copy length to R2 (second argument)
+    MOV R7, #4        ; Syscall number for sys_write in R7
+    // moving
 
-section .text
-    global _start
-
-_start:
-    mov edx, 13           ; Message length
-    mov ecx, hello        ; Message to write
-    mov ebx, 1            ; File descriptor (stdout)
-    mov eax, 4            ; System call number (sys_write)
-    int 0x80              ; Call kernel
-
-    mov eax, 1            ; System call number (sys_exit)
-    xor ebx, ebx          ; Exit code 0
-    int 0x80              ; Call kernel
+    MOV R7, #1        ; Syscall number for sys_exit
+    MOV R0, #0        ; Exit code 0
+    SVC 0             ; Call kernel
