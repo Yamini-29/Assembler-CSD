@@ -1,4 +1,5 @@
 from typing import List, Union
+from Tokenize import tokenize
 
 class ParseError(Exception):
     pass
@@ -115,8 +116,6 @@ class Parser:
                 raise ParseError(f"Invalid address format in {mnemonic} at line {line_num}")
 
 # Example usage
-from Tokenize import tokenize  # Make sure to import the tokenize function
-
 input_code = """
     mov r0, #5
     add r1, r2, r3
