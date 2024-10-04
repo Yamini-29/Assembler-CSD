@@ -48,10 +48,12 @@ class Parser:
         _, mnemonic, line_num = self.tokens[self.pos]
         self.pos += 1
         
+        # Add if required
         condition = ''
-        if self.pos < len(self.tokens) and self.tokens[self.pos][0] == 'CONDITION':
-            _, condition, _ = self.tokens[self.pos]
-            self.pos += 1
+        # if self.pos < len(self.tokens) and self.tokens[self.pos][0] == 'CONDITION':
+        #     _, condition, _ = self.tokens[self.pos]
+        #     print(condition)
+        #     self.pos += 1
 
         operands = []
         while self.pos < len(self.tokens):
@@ -65,55 +67,10 @@ class Parser:
             else:
                 break
 
-        self.validate_operands(mnemonic, condition, operands, line_num)
+        #self.validate_operands(mnemonic, condition, operands, line_num)
         return Instruction(mnemonic, condition, operands)
 
-    def validate_operands(self, mnemonic: str, condition: str, operands: List[str], line_num: int):
-        if mnemonic in ['mov', 'mvn']:
-            if len(operands) != 2:
-                raise ParseError(f"Invalid number of operands for {mnemonic} at line {line_num}")
-            if not operands[0].startswith('r'):
-                raise ParseError(f"First operand of {mnemonic} must be a register at line {line_num}")
-        elif mnemonic in ['add', 'sub', 'mul', 'and', 'orr', 'eor']:
-            if len(operands) != 3:
-                raise ParseError(f"Invalid number of operands for {mnemonic} at line {line_num}")
-            if not all(op.startswith('r') for op in operands[:2]):
-                raise ParseError(f"First two operands of {mnemonic} must be registers at line {line_num}")
-        elif mnemonic in ['cmp', 'tst', 'teq']:
-            if len(operands) != 2:
-                raise ParseError(f"Invalid number of operands for {mnemonic} at line {line_num}")
-            if not operands[0].startswith('r'):
-                raise ParseError(f"First operand of {mnemonic} must be a register at line {line_num}")
-        elif mnemonic in ['b', 'bl', 'bx']:
-            if len(operands) != 1:
-                raise ParseError(f"Invalid number of operands for {mnemonic} at line {line_num}")
-        elif mnemonic in ['ldr', 'str']:
-            if len(operands) < 2:
-                raise ParseError(f"Invalid number of operands for {mnemonic} at line {line_num}")
-            if not operands[0].startswith('r'):
-                raise ParseError(f"First operand of {mnemonic} must be a register at line {line_num}")
-            
-            # Check for valid memory addressing formats
-            if operands[1] != '[':
-                raise ParseError(f"Invalid memory addressing format for {mnemonic} at line {line_num}")
-            
-            # Find closing bracket
-            closing_bracket_index = None
-            for i, op in enumerate(operands[2:], start=2):
-                if op in [']', ']!']:
-                    closing_bracket_index = i
-                    break
-            
-            if closing_bracket_index is None:
-                raise ParseError(f"Missing closing bracket in {mnemonic} at line {line_num}")
-            
-            # Check contents between brackets
-            address_operands = operands[2:closing_bracket_index]
-            if len(address_operands) not in [1, 3]:
-                raise ParseError(f"Invalid address format in {mnemonic} at line {line_num}")
-            
-            if len(address_operands) == 3 and address_operands[1] != ',':
-                raise ParseError(f"Invalid address format in {mnemonic} at line {line_num}")
+
 
 # Example usage
 input_code = """
@@ -123,7 +80,7 @@ input_code = """
 label1: ldr r4, [r5] @ Load value from memory
     cmp r0, #10
     beq exit
-    str r1, [sp, #-4]!
+    str r1, [sp, #-4]
 exit:
     bx lr
 """
