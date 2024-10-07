@@ -19,10 +19,13 @@ TOKEN_TYPES = {
             
                 #r'(?:cdp|ldc|stc|mcr|mrc)|' +  # Coprocessor- Add if required 
                 # swap instructions- Add if required 
+                #tst, teq
                 
+                # add floating point instructions
                 r'(?:swi|svc|bkpt)' +  # System
                 r')\b',
                 
+    'REGISTER': r'\b(?:r1[0-5]|r[0-9]|sp|lr|pc)\b',  # Registers including sp, lr, pc
     'IMMEDIATE': r'#-?(?:0x[0-9a-fA-F]+|\d+)',  # Immediate values, including hexadecimal
 
     # 'CONDITION': r'\b(?:eq|ne|cs|cc|mi|pl|vs|vc|hi|ls|ge|lt|gt|le|al)\b',  # ARM condition codes
