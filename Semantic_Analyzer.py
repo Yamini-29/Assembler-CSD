@@ -6,21 +6,21 @@
 Instruction Validation: Ensure that each instruction is valid for the target ARM architecture.
 Check that the operands are appropriate for each instruction (e.g., mov can't have more than two operands).
 
-Register Usage: Verify that all referenced registers are valid for the target architecture.
+- Register Usage: Verify that all referenced registers are valid for the target architecture.
 Check for proper usage of special registers (e.g., sp, lr, pc).
 
-Immediate Value Range: Ensure that immediate values are within the allowed range for each instruction.
+- Immediate Value Range: Ensure that immediate values are within the allowed range for each instruction.
 For example, many ARM instructions only allow 8-bit immediate values that can be rotated.
 
 Memory Access: Validate memory access instructions (ldr, str) for proper syntax and addressing modes.
 Check that memory alignments are respected where necessary, does not go out of bounds
 
-Label References: Ensure all referenced labels are defined somewhere in the code.
+- Label References: Ensure all referenced labels are defined somewhere in the code.
 Check that branch distances are within the allowed range for the specific branch instruction.
 
-Type mismatches: Attempting to perform operations on values of incompatible types (e.g., adding an integer to a floating-point number).
+- Type mismatches: Attempting to perform operations on values of incompatible types (e.g., adding an integer to a floating-point number).
 
-Directive Processing: If your assembly language includes directives (e.g., .data, .text), ensure they are used correctly.
+- Directive Processing: If your assembly language includes directives (e.g., .data, .text), ensure they are used correctly.
 
 
     Main Tasks:
@@ -74,7 +74,7 @@ class SemanticAnalyzer:
                 else:
                     self.symbol_table[node.name] = self.current_address
             elif isinstance(node, Instruction):
-                self.current_address += 4  # Assuming all instructions are 4 bytes long             #########check
+                self.current_address += 4  # Assuming all instructions are 4 bytes long          
 
     def validate_instructions(self):
         for node in self.ast:
@@ -83,9 +83,9 @@ class SemanticAnalyzer:
 
     def validate_instruction(self, instruction: Instruction):
         self.validate_mnemonic(instruction)
-        self.validate_operands(instruction)                                  #####
-        self.validate_register_usage(instruction)
-        self.validate_immediate_values(instruction)
+        self.validate_operands(instruction)                               
+        # self.validate_register_usage(instruction)
+        # self.validate_immediate_values(instruction)
         self.validate_memory_access(instruction)                            ###check
         self.validate_label_references(instruction)
         self.validate_type_mismatch(instruction)
@@ -106,89 +106,204 @@ class SemanticAnalyzer:
         if instruction.mnemonic not in valid_mnemonics:
             self.errors.append(f"Error: Invalid mnemonic '{instruction.mnemonic}'")
 
-    def validate_operands(self, instruction: Instruction):                                #######Check type and address modes and registers etc
-        operand_count = len(instruction.operands)
-        mnemonic = instruction.mnemonic.lower()  # Convert to lowercase for case-insensitive comparison
+    def is_valid_register(self, op):
+            return op in {f'r{i}' for i in range(16)} | {'sp', 'lr', 'pc'}
+    
+    def is_valid_immediate(self, op):
+        if not op.startswith('#'):
+            return False
+        try:
+            value = int(op[1:], 0)  # 0 as base allows for hex and binary literals
+            return -2**31 <= value < 2**31
+        except ValueError:
+            return False
 
-        # Data processing instructions
+    def validate_operands(self, instruction: Instruction):
+        operand_count = len(instruction.operands)
+        mnemonic = instruction.mnemonic.lower()
+
+        def is_valid_shifted_register(op):
+            parts = op.split()
+            if len(parts) != 3 or parts[1] not in {'lsl', 'lsr', 'asr', 'ror'}:
+                return False
+            return self.is_valid_register(parts[0]) and self.is_valid_immediate(parts[2])
+
+        # Instruction-specific checks
         if mnemonic in {'mov', 'mvn', 'cmp', 'cmn', 'tst', 'teq'}:
             if operand_count != 2:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 2 operands")
+            elif not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid destination register in '{mnemonic}'")
+            elif not (self.is_valid_register(instruction.operands[1]) or 
+                    self.is_valid_immediate(instruction.operands[1]) or 
+                    is_valid_shifted_register(instruction.operands[1])):
+                self.errors.append(f"Error: Invalid source operand in '{mnemonic}'")
+
         elif mnemonic in {'add', 'sub', 'rsb', 'adc', 'sbc', 'rsc', 'and', 'orr', 'eor', 'bic'}:
             if operand_count != 3:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 3 operands")
+            elif not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid destination register in '{mnemonic}'")
+            elif not self.is_valid_register(instruction.operands[1]):
+                self.errors.append(f"Error: Invalid first source register in '{mnemonic}'")
+            elif not (self.is_valid_register(instruction.operands[2]) or 
+                    self.is_valid_immediate(instruction.operands[2]) or 
+                    is_valid_shifted_register(instruction.operands[2])):
+                self.errors.append(f"Error: Invalid second source operand in '{mnemonic}'")
 
-        # Multiply instructions
         elif mnemonic in {'mul', 'mla'}:
-            if operand_count != 3 and operand_count != 4:
+            if operand_count not in {3, 4}:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires 3 or 4 operands")
+            elif not all(self.is_valid_register(op) for op in instruction.operands):
+                self.errors.append(f"Error: Invalid register in '{mnemonic}'")
+
         elif mnemonic in {'umull', 'umlal', 'smull', 'smlal'}:
             if operand_count != 4:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 4 operands")
+            elif not all(self.is_valid_register(op) for op in instruction.operands):
+                self.errors.append(f"Error: Invalid register in '{mnemonic}'")
 
-        # Load/Store instructions
         elif mnemonic in {'ldr', 'str', 'ldrb', 'strb', 'ldrh', 'strh'}:
-            if operand_count != 2:
-                self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 2 operands")
+            if operand_count < 3:  # Need at least: register, '[', and base register
+                self.errors.append(f"Error: '{mnemonic}' instruction requires at least 3 operands")
+                return
+
+            if not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid destination register '{instruction.operands[0]}' in {mnemonic}")
+                return
+
+            if instruction.operands[1] != '[':
+                self.errors.append(f"Error: Expected '[' in {mnemonic} addressing mode")
+                return
+
+            # Find the closing bracket and exclamation mark
+            closing_bracket_index = None
+            has_exclamation = False
+            for i, op in enumerate(instruction.operands[2:], start=2):
+                if op == ']':
+                    closing_bracket_index = i
+                    if i+1 < operand_count and instruction.operands[i+1] == '!':
+                        has_exclamation = True
+                    break
+
+            if closing_bracket_index is None:
+                self.errors.append(f"Error: Missing closing ']' in {mnemonic} addressing mode")
+                return
+
+            # Validate the addressing mode
+            address_operands = instruction.operands[2:closing_bracket_index]
+            if not self.is_valid_address_operands(address_operands):
+                self.errors.append(f"Error: Invalid addressing mode in {mnemonic}")
+
+            # Check for post-indexed addressing or writeback
+            if closing_bracket_index + 1 < operand_count:
+                if instruction.operands[closing_bracket_index + 1] == '!':
+                    if closing_bracket_index + 2 < operand_count:
+                        self.errors.append(f"Error: Unexpected operands after '!' in {mnemonic}")
+                else:
+                    post_index_operands = instruction.operands[closing_bracket_index+1:]
+                    if not self.is_valid_post_index_operands(post_index_operands):
+                        self.errors.append(f"Error: Invalid post-indexed addressing in {mnemonic}")
+
+
         elif mnemonic in {'ldm', 'stm'}:
             if operand_count < 2:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires at least 2 operands")
+            elif not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid base register in '{mnemonic}'")
+            elif not all(self.is_valid_register(op) for op in instruction.operands[1:]):
+                self.errors.append(f"Error: Invalid register list in '{mnemonic}'")
 
-        # Branch instructions (including the new ones)
         elif mnemonic in {'b', 'bl', 'bx', 'blx', 'bal', 'beq', 'bne', 'bpl', 'bmi', 'bcc', 'blo', 'bcs', 'bhs', 'bvc', 'bvs', 'bgt', 'bge', 'blt', 'ble', 'bhi', 'bls'}:
             if operand_count != 1:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 1 operand")
+            elif mnemonic in {'bx', 'blx'} and not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid register in '{mnemonic}'")
 
-        # Shift instructions
         elif mnemonic in {'lsl', 'lsr', 'asr', 'ror'}:
             if operand_count != 3:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 3 operands")
+            elif not all(self.is_valid_register(op) for op in instruction.operands[:2]):
+                self.errors.append(f"Error: Invalid register in '{mnemonic}'")
+            elif not self.is_valid_immediate(instruction.operands[2]):
+                self.errors.append(f"Error: Invalid shift amount in '{mnemonic}'")
+
         elif mnemonic == 'rrx':
             if operand_count != 2:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 2 operands")
+            elif not all(self.is_valid_register(op) for op in instruction.operands):
+                self.errors.append(f"Error: Invalid register in '{mnemonic}'")
 
-        # Status register access instructions
         elif mnemonic in {'mrs', 'msr'}:
             if operand_count != 2:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 2 operands")
+            elif mnemonic == 'mrs' and not self.is_valid_register(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid destination register in '{mnemonic}'")
+            elif mnemonic == 'msr' and instruction.operands[0] not in {'cpsr', 'spsr'}:
+                self.errors.append(f"Error: Invalid status register in '{mnemonic}'")
 
-        # System and coprocessor instructions
         elif mnemonic in {'swi', 'svc', 'bkpt'}:
             if operand_count != 1:
                 self.errors.append(f"Error: '{mnemonic}' instruction requires exactly 1 operand")
+            elif not self.is_valid_immediate(instruction.operands[0]):
+                self.errors.append(f"Error: Invalid immediate value in '{mnemonic}'")
 
-        # If the instruction is not recognized
         else:
             self.errors.append(f"Warning: Unknown instruction '{mnemonic}'. Unable to validate operands.")
-
-        # Additional checks could be added here for specific operand types,
-        # valid registers, addressing modes, etc.
             
-    def validate_register_usage(self, instruction: Instruction):
-        valid_registers = {f'r{i}' for i in range(16)} | {'sp', 'lr', 'pc'}
-        for operand in instruction.operands:
-            if operand.startswith('r') or operand in {'sp', 'lr', 'pc'}:
-                if operand not in valid_registers:
-                    self.errors.append(f"Error: Invalid register '{operand}'")
+            
+    # def validate_register_usage(self, instruction: Instruction):
+    #     valid_registers = {f'r{i}' for i in range(16)} | {'sp', 'lr', 'pc'}
+    #     for operand in instruction.operands:
+    #         if operand.startswith('r') or operand in {'sp', 'lr', 'pc'}:
+    #             if operand not in valid_registers:
+    #                 self.errors.append(f"Error: Invalid register '{operand}'")
 
-    def validate_immediate_values(self, instruction: Instruction):
-        for operand in instruction.operands:
-            if operand.startswith('#'):
-                value = int(operand[1:])                                                    ########## below instruction
-                if instruction.mnemonic in {'add', 'sub', 'rsb', 'adc', 'sbc', 'rsc', 'and', 'orr', 'eor', 'bic', 'mov', 'mvn'}:         
-                    if not self.is_valid_immediate(value):
-                        self.errors.append(f"Error: Immediate value '{operand}' is not a valid ARM immediate")
-                elif instruction.mnemonic in {'cmp', 'cmn'}:
-                    if not (-256 <= value <= 255):
-                        self.errors.append(f"Error: Immediate value '{operand}' out of range for comparison")
+    # def validate_immediate_values(self, instruction: Instruction):
+    #     for operand in instruction.operands:
+    #         if operand.startswith('#'):
+    #             value = int(operand[1:])                                                    ########## below instruction
+    #             if instruction.mnemonic in {'add', 'sub', 'rsb', 'adc', 'sbc', 'rsc', 'and', 'orr', 'eor', 'bic', 'mov', 'mvn'}:         
+    #                 if not self.is_valid_immediate(value):
+    #                     self.errors.append(f"Error: Immediate value '{operand}' is not a valid ARM immediate")
+    #             elif instruction.mnemonic in {'cmp', 'cmn'}:
+    #                 if not (-256 <= value <= 255):
+    #                     self.errors.append(f"Error: Immediate value '{operand}' out of range for comparison")
 
-    def is_valid_immediate(self, value):
-        # Check if the value can be represented as an 8-bit value rotated by an even number of bits
-        for i in range(0, 32, 2):
-            rotated = (value << i | value >> (32 - i)) & 0xFFFFFFFF
-            if rotated < 256:
-                return True
+    # def is_valid_immediate(self, value):
+    #     # Check if the value can be represented as an 8-bit value rotated by an even number of bits
+    #     for i in range(0, 32, 2):
+    #         rotated = (value << i | value >> (32 - i)) & 0xFFFFFFFF
+    #         if rotated < 256:
+    #             return True
+    #     return False
+
+
+    def is_valid_address_operands(self, operands):
+        if len(operands) == 0:
+            return False
+        if not self.is_valid_register(operands[0]):
+            return False
+        if len(operands) == 1:
+            return True  # [Rn]
+        if len(operands) == 3 and operands[1] == ',':
+            return self.is_valid_immediate(operands[2]) or self.is_valid_register(operands[2])  # [Rn, #imm] or [Rn, Rm]
+        if len(operands) == 5 and operands[1] == ',' and operands[3] == ',':
+            return (self.is_valid_register(operands[2]) and 
+                    (operands[4] in {'lsl', 'lsr', 'asr', 'ror'} or self.is_valid_immediate(operands[4])))  # [Rn, Rm, shift] or [Rn, Rm, #imm]
         return False
+
+    def is_valid_post_index_operands(self, operands):
+        if len(operands) == 0:
+            return False
+        if len(operands) == 1:
+            return self.is_valid_immediate(operands[0]) or self.is_valid_register(operands[0])
+        if len(operands) == 3 and operands[1] == ',':
+            return (self.is_valid_register(operands[0]) and 
+                    (operands[2] in {'lsl', 'lsr', 'asr', 'ror'} or self.is_valid_immediate(operands[2])))
+        return False
+
+
 
     def validate_memory_access(self, instruction: Instruction):
         if instruction.mnemonic in {'ldr', 'str', 'ldrb', 'strb', 'ldrh', 'strh'}:
@@ -368,8 +483,6 @@ class SemanticAnalyzer:
             # Unrecognized directive
             else:
                 self.errors.append(f"Error: Unrecognized directive {instruction.mnemonic}")
-        else:
-            self.errors.append(f"Error: Expected directive, got {instruction.mnemonic}")
 
 
 if __name__ == "__main__":
@@ -386,7 +499,7 @@ if __name__ == "__main__":
     """
 
     tokens = tokenize(input_code)
-    parser = Parser(tokens)
+    parser = Parser.Parser(tokens)
     ast = parser.parse()
 
     analyzer = SemanticAnalyzer(ast)
