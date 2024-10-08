@@ -70,18 +70,18 @@ def tokenize(input_code):
     return tokens   # Instruction type - instruction - line no
 
 # Example usage
-input_code = """
-    mov r0, #5
-    add r1, r2, r3
-    bne label1
-label1: ldr r4, [r5] @ Load value from memory
-    cmp r0, #10
-    beq exit
-    str r1, [sp, #-4]!
-exit:
-    bx lr
-"""
+# input_code = """
+#     mov r0, #5
+#     add r1, r2, r3
+#     bne label1
+# label1: ldr r4, [r5] @ Load value from memory
+#     cmp r0, #10
+#     beq exit
+#     str r1, [sp, #-4]!
+# exit:
+#     bx lr
+# """
 
-tokens = tokenize(input_code)
-for token in tokens:
-    print(f"Line {token[2]}: {token[0]} : {token[1]}")
+# tokens = tokenize(input_code)
+# for token in tokens:
+#     print(f"Line {token[2]}: {token[0]} : {token[1]}")
