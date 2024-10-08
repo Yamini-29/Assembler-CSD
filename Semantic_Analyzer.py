@@ -304,26 +304,24 @@ class SemanticAnalyzer:
         return False
 
 
-
     def validate_memory_access(self, instruction: Instruction):
-        if instruction.mnemonic in {'ldr', 'str', 'ldrb', 'strb', 'ldrh', 'strh'}:
-            if len(instruction.operands) < 2 or not instruction.operands[1].startswith('['):
-                self.errors.append(f"Error: Invalid memory access syntax for '{instruction.mnemonic}'")
-            else:
-                # Check alignment
-                if instruction.mnemonic in {'ldr', 'str'}:
-                    if not self.is_aligned(instruction.operands[1], 4):
-                        self.errors.append(f"Warning: Unaligned access in '{instruction.mnemonic}'")
-                elif instruction.mnemonic in {'ldrh', 'strh'}:
-                    if not self.is_aligned(instruction.operands[1], 2):
-                        self.errors.append(f"Warning: Unaligned access in '{instruction.mnemonic}'")
+        #Call function from mem_val
+        return 
+    
+        #if instruction.mnemonic in {'ldr', 'str', 'ldrb', 'strb', 'ldrh', 'strh'}:
+        # if instruction.mnemonic in {'ldr', 'str'}:
+        #     if not self.is_aligned(instruction.operands[1], 4):
+        #         self.errors.append(f"Warning: Unaligned access in '{instruction.mnemonic}'")
+        # elif instruction.mnemonic in {'ldrh', 'strh'}:
+        #     if not self.is_aligned(instruction.operands[1], 2):
+        #         self.errors.append(f"Warning: Unaligned access in '{instruction.mnemonic}'")
 
-    def is_aligned(self, address_operand, alignment):
-        # This is a simplified check. In reality, you'd need to evaluate the address expression.
-        if '#' in address_operand:
-            offset = int(address_operand.split('#')[1].rstrip(']!'))
-            return offset % alignment == 0
-        return True  # Assume aligned if we can't determine
+    # def is_aligned(self, address_operand, alignment):
+    #     # This is a simplified check. In reality, you'd need to evaluate the address expression.
+    #     if '#' in address_operand:
+    #         offset = int(address_operand.split('#')[1].rstrip(']!'))
+    #         return offset % alignment == 0
+    #     return True  # Assume aligned if we can't determine
 
     def validate_label_references(self, instruction: Instruction):
         branch_instructions = {

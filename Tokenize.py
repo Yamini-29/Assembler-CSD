@@ -9,7 +9,7 @@ TOKEN_TYPES = {
                 r'(?:mul|mla|umull|umlal|smull|smlal)|' +  # Multiply
                 r'(?:cmp|cmn)|' +
 
-                r'(?:ldr|str|ldrb|strb|ldrh|strh|ldm|stm)|' +  # Load/Store
+                r'(?:ldr|str|ldrb|strb|ldrh|strh|ldm|stm)|' +  # Load/Store          'ldrd', 'strd', 
                 
                 r'(?:b|bl|bx|blx)|' +  # Branch
                 r'(?:bal|beq|bne|bpl|bmi|bcc|blo|bcs|bhs|bvc|bcs|bgt|bge|blt|ble|bhi|bls)|' +  # Branch
