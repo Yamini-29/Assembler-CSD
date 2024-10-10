@@ -37,12 +37,14 @@ Architectural Constraints: Check for any architecture-specific rules or constrai
 Macro Expansion: If your assembler supports macros, expand them and validate the resulting code.
 Condition Codes: Verify that condition codes are used correctly with instructions that support them.
 '''
-
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from typing import List, Dict, Union
+import Parser
 from Parser import Label, Instruction
 from Tokenize import tokenize
-import Parser
+
 
 class SemanticError(Exception):
     pass
@@ -502,6 +504,7 @@ if __name__ == "__main__":
 
     analyzer = SemanticAnalyzer(ast)
     errors = analyzer.analyze()
+    symbol_table=analyzer.build_symbol_table()
 
     if errors:
         for error in errors:
