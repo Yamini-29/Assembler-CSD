@@ -81,6 +81,6 @@ label1: ldr r4, [r5] @ Load value from memory
 exit:
 """
 
-# tokens = tokenize(input_code)
-# for token in tokens:
-#     print(f"Line {token[2]}: {token[0]} : {token[1]}")
+tokens = tokenize(input_code)
+for token in tokens:
+    print(f"Line {token[2]}: {token[0]} : {token[1]}")

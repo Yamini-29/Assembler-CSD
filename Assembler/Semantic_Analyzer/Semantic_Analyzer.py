@@ -72,7 +72,6 @@ class SemanticAnalyzer:
         for node in self.ast:
             #print(node)
             if isinstance(node, Label):
-                print("label")
                 if node.name in self.symbol_table:
                     self.errors.append(f"Error: Label '{node.name}' is defined multiple times")
                 else:
@@ -506,7 +505,6 @@ if __name__ == "__main__":
     tokens = tokenize(input_code)
     parser = Parser(tokens)
     ast = parser.parse()
-    print(ast)
 
     analyzer = SemanticAnalyzer(ast)
     errors = analyzer.analyze()
