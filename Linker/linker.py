@@ -42,49 +42,48 @@ class Linker:
             print(f"Error reading object file {filename}: {e}")
             sys.exit(1)
     
-    #Assuming only one program
 
-    # def allocate_memory(self, programs: List[Tuple[str, int]]) -> None:
-    #     """
-    #     Allocate memory for each program based on their base addresses.
-    #     programs: List of (filename, base_address) tuples
-    #     """
-    #     current_address = 0
+    def allocate_memory(self, programs: List[Tuple[str, int]]) -> None:
+        """
+        Allocate memory for each program based on their base addresses.
+        programs: List of (filename, base_address) tuples
+        """
+        current_address = 0
         
-    #     for prog_id, (filename, base_addr) in enumerate(programs, 1):
-    #         _, _, _, length = self.read_object_file(filename)
+        for prog_id, (filename, base_addr) in enumerate(programs, 1):
+            _, _, _, length = self.read_object_file(filename)
             
-    #         if base_addr == -1:  # Auto-allocate
-    #             base_addr = current_address
+            if base_addr == -1:  # Auto-allocate
+                base_addr = current_address
                 
-    #         self.base_addresses[prog_id] = base_addr
-    #         self.program_lengths[prog_id] = length
-    #         current_address = base_addr + length
+            self.base_addresses[prog_id] = base_addr
+            self.program_lengths[prog_id] = length
+            current_address = base_addr + length
     
-    # def collect_symbols(self, programs: List[Tuple[str, int]]) -> None:
-    #     """
-    #     Collect all symbols from all programs and build global symbol table.
-    #     Handle conflicts and external references.
-    #     """
-    #     for prog_id, (filename, _) in enumerate(programs, 1):
-    #         _, symbol_table, externals, _ = self.read_object_file(filename)
+    def collect_symbols(self, programs: List[Tuple[str, int]]) -> None:
+        """
+        Collect all symbols from all programs and build global symbol table.
+        Handle conflicts and external references.
+        """
+        for prog_id, (filename, _) in enumerate(programs, 1):
+            _, symbol_table, externals, _ = self.read_object_file(filename)
             
-    #         # Add symbols to global table with relocated addresses
-    #         base_addr = self.base_addresses[prog_id]
-    #         for symbol, value in symbol_table.items():
-    #             relocated_value = value + base_addr
+            # Add symbols to global table with relocated addresses
+            base_addr = self.base_addresses[prog_id]
+            for symbol, value in symbol_table.items():
+                relocated_value = value + base_addr
                 
-    #             if symbol in self.global_symbol_table:
-    #                 print(f"Error: Symbol '{symbol}' multiply defined")
-    #                 sys.exit(1)
+                if symbol in self.global_symbol_table:
+                    print(f"Error: Symbol '{symbol}' multiply defined")
+                    sys.exit(1)
                     
-    #             self.global_symbol_table[symbol] = relocated_value
+                self.global_symbol_table[symbol] = relocated_value
             
-    #         # Record external references
-    #         for ext in externals:
-    #             if ext not in self.external_references:
-    #                 self.external_references[ext] = []
-    #             self.external_references[ext].append((prog_id, 0))  # Address to be filled later
+            # Record external references
+            for ext in externals:
+                if ext not in self.external_references:
+                    self.external_references[ext] = []
+                self.external_references[ext].append((prog_id, 0))  # Address to be filled later
     
     def link(self, programs: List[Tuple[str, int]], output_file: str) -> None:
         """
