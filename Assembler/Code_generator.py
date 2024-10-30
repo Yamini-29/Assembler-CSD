@@ -22,57 +22,65 @@ class CodeGenerator:
         # print(instruction.mnemonic)
         if opcode is None:
             raise SemanticError(f"Unsupported mnemonic '{instruction.mnemonic}'")
-        operand_count = len(instruction.operands)
         mnemonic = instruction.mnemonic.lower()
         #Encode operands assuming all instructions are 4 bytes long
-        # Encode for arithmetic/logic operations
-        if mnemonic in {'add', 'sub', 'rsb', 'adc', 'sbc', 'rsc', 'and', 'orr', 'eor', 'bic'}:
-            #operand_count==3
-            rd = self.encode_register(instruction.operands[0])
-            rn = self.encode_register(instruction.operands[1])
-            # Check if the third operand is a register or immediate
-            if instruction.operands[2].startswith('#'):
-                imm = self.encode_immediate(instruction.operands[2]) 
-                # Return encoded instruction: opcode | rd | rn | imm flag (1)
-                return (opcode << 24) | (rd << 16) | (rn << 8) | imm | (1 << 20)  # Immediate flag bit set to 1
-            else:
-                rm = self.encode_register(instruction.operands[2])  # Second source register
-                # Return encoded instruction: opcode | rd | rn | rm
-                return (opcode << 24) | (rd << 16) | (rn << 8) | rm
-        # Encode for move and comparison instructions
-        elif mnemonic in {'mov', 'mvn', 'cmp', 'cmn', 'tst', 'teq'}:
-            #operand_count==2
-            rd = self.encode_register(instruction.operands[0])  # Destination register for mov,mvn and source register for remaining
-        
-            # Check if the second operand is a register or immediate
-            if instruction.operands[1].startswith('#'):
-                imm = self.encode_immediate(instruction.operands[1])
-                return (opcode << 24) | (rd << 16) | imm | (1 << 20)  # Immediate flag bit set to 1
-            else:
-                rm = self.encode_register(instruction.operands[1])  # Second source register
-                return (opcode << 24) | (rd << 16) | rm
-        elif mnemonic in 'mul': #operand_count == 3
-            rd = self.encode_register(instruction.operands[0])
-            rm = self.encode_register(instruction.operands[1])
-            rs = self.encode_register(instruction.operands[2])
-            return (opcode << 24) | (rd << 16) | (rm << 8) | rs
-            
-        elif mnemonic == 'mla': #operand_count == 4
-            rd = self.encode_register(instruction.operands[0])
-            rm = self.encode_register(instruction.operands[1])
-            rs = self.encode_register(instruction.operands[2])
-            ra = self.encode_register(instruction.operands[3])
-            return (opcode << 24) | (rd << 16) | (rm << 8) | (rs << 4) | ra
-        # Encode for long multiplication instructions
-        elif mnemonic in {'umull', 'umlal', 'smull', 'smlal'}:
-            #operand_count == 4:
-            rd_hi = self.encode_register(instruction.operands[0])
-            rd_lo = self.encode_register(instruction.operands[1])
-            rm = self.encode_register(instruction.operands[2])
-            rs = self.encode_register(instruction.operands[3])
-            return (opcode << 24) | (rd_hi << 16) | (rd_lo << 12) | (rm << 8) | rs
+        # Determine `itype` based on instruction category
+        if mnemonic in {'ldr', 'str', 'mov'}:
+            itype = 0b00  # Memory type
+        elif mnemonic in {'add', 'sub', 'mul', 'div', 'and', 'or', 'eor', 'asl', 'asr'}:
+            itype = 0b01  # Arithmetic type
+        elif mnemonic in {'b', 'br', 'bl', 'beq', 'blt', 'bgt', 'cmp'}:
+            itype = 0b10  # Branch type
+        elif mnemonic == 'svc':
+            itype = 0b11  # System Call type
         else:
-            raise SemanticError(f"Incorect number of operands for '{instruction.mnemonic}'")
+            raise SemanticError(f"Unsupported instruction type for '{instruction.mnemonic}'")
+
+        # Common register encoding for rd and rn if needed
+        rd = self.encode_register(instruction.operands[0])
+        rn = self.encode_register(instruction.operands[1]) if len(instruction.operands) > 1 else 0
+
+        # Memory Type Encoding (LDR, STR, MOV)
+        if itype == 0b00:
+            if mnemonic == 'mov':
+                # MOV rd, imm/register
+                is_imm = 1 if instruction.operands[1].startswith('#') else 0
+                if is_imm:
+                    imm_val = self.encode_immediate(instruction.operands[1])
+                    return (itype << 30) | (opcode << 24) | (rd << 20) | (is_imm << 15) | imm_val
+                else:
+                    rm = self.encode_register(instruction.operands[1])
+                    return (itype << 30) | (opcode << 24) | (rd << 20) | rm
+            else:
+                # LDR/STR rd, [rn, #imm]
+                is_imm = 1 if instruction.operands[2].startswith('#') else 0
+                imm_val = self.encode_immediate(instruction.operands[2]) if is_imm else 0
+                return (itype << 30) | (opcode << 24) | (rd << 20) | (rn << 16) | (is_imm << 15) | imm_val
+        # Arithmetic Type Encoding (ADD, SUB, etc.)
+        elif itype == 0b01:
+            is_imm = 1 if instruction.operands[2].startswith('#') else 0
+            if is_imm:
+                imm_val = self.encode_immediate(instruction.operands[2])
+                return (itype << 30) | (opcode << 24) | (rd << 20) | (rn << 16) | (is_imm << 15) | imm_val
+            else:
+                rm = self.encode_register(instruction.operands[2])
+                return (itype << 30) | (opcode << 24) | (rd << 20) | (rn << 16) | rm
+        # Branch Type Encoding (B, BR, BL, BEQ, BLT, BGT, CMP)
+        elif itype == 0b10:
+            # Branch encoding with immediate address or register
+            if mnemonic in {'b', 'bl'}:
+                addr = self.encode_immediate(instruction.operands[0])
+                return (itype << 30) | (opcode << 24) | addr
+            elif mnemonic in {'beq', 'blt', 'bgt', 'cmp'}:
+                rm = self.encode_register(instruction.operands[1])
+                return (itype << 30) | (opcode << 24) | (rd << 16) | rm
+         # System Call Type Encoding (SVC)
+        elif itype == 0b11:
+            # SVC #imm
+            imm_val = self.encode_immediate(instruction.operands[0])
+            return (itype << 30) | (opcode << 24) | imm_val
+
+        raise SemanticError(f"Encoding failed for '{instruction.mnemonic}'") 
         
     def encode_register(self, reg: str)-> int:
         #Assuming registers are named r0-r15
@@ -93,9 +101,9 @@ class CodeGenerator:
 
 if __name__ == "__main__":
     input_code = """
+        mov r0, r1
         add r1, r2, r3
-        sub r5, r6, r8
-        cmp r0, #10
+        cmp r0, r4
     """
 
     tokens = tokenize(input_code)
@@ -119,9 +127,3 @@ if __name__ == "__main__":
         for code in machine_code:
             print(f"{code:08b}")
 
-
-
-
-
-
-        
