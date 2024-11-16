@@ -36,4 +36,3 @@ opcode_table= {
     #'UMLAL': 33,
 }
 
-
