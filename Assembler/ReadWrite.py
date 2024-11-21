@@ -27,17 +27,17 @@ def assemble_asm_to_object(asm_file, obj_file):
                 print(ast)
                 
                 analyzer = SemanticAnalyzer(ast)
-                errors = analyzer.analyze()
+                errors, symbol_table = analyzer.analyze()
                 if errors:
                     for error in errors:
                         print(error)
                 else:
                     print("No semantic errors found.")
                 
-                symbol_table = {'exit': 0x100}
+                #symbol_table = {'exit': 0x100, 'label1' : 0x101, 'lab2' : 0x102,}
                 code_gen = CodeGenerator(ast, symbol_table)
                 machine_code = code_gen.generate_machine_code()
-
+                i = 0
                 print("Generated Machine Code:")
                 for i, code in enumerate(machine_code):
                     s = code_gen.format_binary(code)
@@ -52,7 +52,12 @@ def assemble_asm_to_object(asm_file, obj_file):
                     is_imm = (code >> 15) & 0x1
                     value = code & 0x7FFF
                     print(f"  Type: {itype:02b}, Control: {u_ctrl:06b}, Rd: {rd:04b}, Rm: {rm:04b}, Imm: {is_imm}, Value: {value:015b}")
-                    
+                    i+=1
+                
+                obj.write("#")
+                obj.write(str(symbol_table))   
+                obj.write("\n#")
+                obj.write(str(i))         
         print(f"Successfully assembled {asm_file} into {obj_file}")
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -60,8 +65,8 @@ def assemble_asm_to_object(asm_file, obj_file):
 def main():
     asm_file = input("Enter the ASM file (e.g., 'Prog.asm'): ")
     obj_file = input("Enter the output object file (e.g., 'Prog.o'): ")
-    asm_file = "prog.asm"
-    obj_file = "p.o"
+    # asm_file = "prog1.asm"
+    # obj_file = "p1.o"
     assemble_asm_to_object(asm_file, obj_file)
 
 if __name__ == "__main__":

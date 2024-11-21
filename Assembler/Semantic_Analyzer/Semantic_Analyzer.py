@@ -66,7 +66,7 @@ class SemanticAnalyzer:
     def analyze(self):
         self.build_symbol_table()
         self.validate_instructions()
-        return self.errors
+        return self.errors, self.symbol_table
 
     def build_symbol_table(self):
         for node in self.ast:
@@ -79,7 +79,7 @@ class SemanticAnalyzer:
             elif isinstance(node, Instruction):
                 self.current_address += 4  # Assuming all instructions are 4 bytes long   
 
-        print(self.symbol_table)
+        return(self.symbol_table)
 
     def validate_instructions(self):
         for node in self.ast:
