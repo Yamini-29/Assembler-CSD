@@ -377,8 +377,8 @@ class SemanticAnalyzer:
         if instruction.mnemonic in data_processing_instructions:
             if len(instruction.operands) >= 2:  # Some instructions might have 2 or 3 operands
                 op1, op2 = instruction.operands[1], instruction.operands[-1]
-                if (is_register(op1) and is_immediate(op2)) or (is_immediate(op1) and is_register(op2)):
-                    self.errors.append(f"Warning: Mixing register and immediate operands in '{instruction.mnemonic}'")
+                # if (is_register(op1) and is_immediate(op2)) or (is_immediate(op1) and is_register(op2)):
+                #     self.errors.append(f"Warning: Mixing register and immediate operands in '{instruction.mnemonic}'")
         
         # elif instruction.mnemonic in floating_point_instructions:
         #     for op in instruction.operands:

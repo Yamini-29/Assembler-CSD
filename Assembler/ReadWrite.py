@@ -65,7 +65,7 @@ def assemble_asm_to_object(asm_file, obj_file):
 def main():
     asm_file = input("Enter the ASM file (e.g., 'Prog.asm'): ")
     obj_file = input("Enter the output object file (e.g., 'Prog.o'): ")
-    # asm_file = "prog1.asm"
+    # asm_file = "comp1.asm"
     # obj_file = "p1.o"
     assemble_asm_to_object(asm_file, obj_file)
 
